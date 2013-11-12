@@ -2,10 +2,12 @@ from datetime import date
 
 import mock
 from unittest2 import TestCase
+from test_data import TEST_BANK_ACCOUNT
 
-from authorize import Address, AuthorizeClient, CreditCard
+from authorize import Address, AuthorizeClient, CreditCard, BankAccount
 from authorize.client import AuthorizeCreditCard, AuthorizeRecurring, \
-    AuthorizeSavedCard, AuthorizeTransaction
+    AuthorizeSavedCard, AuthorizeBankAccount, AuthorizeSavedAccount, \
+    AuthorizeTransaction
 
 
 TRANSACTION_RESULT = {
@@ -35,6 +37,7 @@ class ClientTests(TestCase):
         self.year = date.today().year + 10
         self.credit_card = CreditCard('4111111111111111', self.year, 1, '911',
             'Jeff', 'Schenck')
+        self.bank_account = BankAccount(**dict(TEST_BANK_ACCOUNT))
         self.address = Address('45 Rose Ave', 'Venice', 'CA', '90291')
 
     def tearDown(self):
@@ -69,12 +72,23 @@ class ClientTests(TestCase):
             self.client.saved_card('123|456'), AuthorizeSavedCard))
         self.assertTrue(isinstance(
             self.client.recurring('123'), AuthorizeRecurring))
+        self.assertTrue(isinstance(
+            self.client.check(self.bank_account), AuthorizeBankAccount))
+        self.assertTrue(isinstance(
+            self.client.check(self.bank_account, self.address),
+            AuthorizeBankAccount))
 
     def test_authorize_credit_card_basic(self):
         card = AuthorizeCreditCard(self.client, self.credit_card)
         card = AuthorizeCreditCard(self.client, self.credit_card,
             self.address)
         repr(card)
+
+    def test_authorize_bank_account_basic(self):
+        check = AuthorizeBankAccount(self.client, self.bank_account)
+        check = AuthorizeBankAccount(self.client, self.bank_account,
+            self.address)
+        repr(check)
 
     def test_authorize_credit_card_auth(self):
         self.client._transaction.auth.return_value = TRANSACTION_RESULT
@@ -101,12 +115,25 @@ class ClientTests(TestCase):
         card = AuthorizeCreditCard(self.client, self.credit_card)
         result = card.save()
         self.assertEqual(self.client._customer.create_saved_payment.call_args,
-            ((self.credit_card,), {'address': None}))
+            ((), {'address': None, 'credit_card': self.credit_card}))
         self.assertTrue(isinstance(
             self.client._customer.create_saved_profile.call_args[0][0], str))
         self.assertTrue(isinstance(
             self.client._customer.create_saved_profile.call_args[0][1], list))
         self.assertTrue(isinstance(result, AuthorizeSavedCard))
+        self.assertEqual(result.uid, '1|2')
+
+    def test_authorize_bank_account_save(self):
+        self.client._customer.create_saved_profile.return_value = ('1', '2')
+        check = AuthorizeBankAccount(self.client, self.bank_account)
+        result = check.save()
+        self.assertEqual(self.client._customer.create_saved_payment.call_args,
+                         ((), {'address': None, 'bank_account': self.bank_account}))
+        self.assertTrue(isinstance(
+            self.client._customer.create_saved_profile.call_args[0][0], str))
+        self.assertTrue(isinstance(
+            self.client._customer.create_saved_profile.call_args[0][1], list))
+        self.assertTrue(isinstance(result, AuthorizeSavedAccount))
         self.assertEqual(result.uid, '1|2')
 
     def test_authorize_credit_card_recurring(self):
@@ -165,11 +192,28 @@ class ClientTests(TestCase):
 
     def test_authorize_saved_card_basic(self):
         saved = AuthorizeSavedCard(self.client, '1|2')
+        self.assertTrue(isinstance(saved, AuthorizeSavedCard))
+        repr(saved)
+
+    def test_authorize_saved_check_basic(self):
+        saved = AuthorizeSavedAccount(self.client, '1|2')
+        self.assertTrue(isinstance(saved, AuthorizeSavedAccount))
         repr(saved)
 
     def test_authorize_saved_card_auth(self):
         self.client._customer.auth.return_value = TRANSACTION_RESULT
         saved = AuthorizeSavedCard(self.client, '1|2')
+        self.assertTrue(isinstance(saved, AuthorizeSavedCard))
+        result = saved.auth(10)
+        self.assertEqual(self.client._customer.auth.call_args,
+            (('1', '2', 10), {}))
+        self.assertTrue(isinstance(result, AuthorizeTransaction))
+        self.assertEqual(result.uid, '2171062816')
+
+    def test_authorize_saved_check_auth(self):
+        self.client._customer.auth.return_value = TRANSACTION_RESULT
+        saved = AuthorizeSavedAccount(self.client, '1|2')
+        self.assertTrue(isinstance(saved, AuthorizeSavedAccount))
         result = saved.auth(10)
         self.assertEqual(self.client._customer.auth.call_args,
             (('1', '2', 10), {}))
@@ -179,6 +223,17 @@ class ClientTests(TestCase):
     def test_authorize_saved_card_capture(self):
         self.client._customer.capture.return_value = TRANSACTION_RESULT
         saved = AuthorizeSavedCard(self.client, '1|2')
+        self.assertTrue(isinstance(saved, AuthorizeSavedCard))
+        result = saved.capture(10)
+        self.assertEqual(self.client._customer.capture.call_args,
+            (('1', '2', 10), {}))
+        self.assertTrue(isinstance(result, AuthorizeTransaction))
+        self.assertEqual(result.uid, '2171062816')
+
+    def test_authorize_saved_check_capture(self):
+        self.client._customer.capture.return_value = TRANSACTION_RESULT
+        saved = AuthorizeSavedAccount(self.client, '1|2')
+        self.assertTrue(isinstance(saved, AuthorizeSavedAccount))
         result = saved.capture(10)
         self.assertEqual(self.client._customer.capture.call_args,
             (('1', '2', 10), {}))
@@ -187,6 +242,14 @@ class ClientTests(TestCase):
 
     def test_authorize_saved_card_delete(self):
         saved = AuthorizeSavedCard(self.client, '1|2')
+        self.assertTrue(isinstance(saved, AuthorizeSavedCard))
+        result = saved.delete()
+        self.assertEqual(self.client._customer.delete_saved_payment.call_args,
+            (('1', '2'), {}))
+
+    def test_authorize_saved_check_delete(self):
+        saved = AuthorizeSavedAccount(self.client, '1|2')
+        self.assertTrue(isinstance(saved, AuthorizeSavedAccount))
         result = saved.delete()
         self.assertEqual(self.client._customer.delete_saved_payment.call_args,
             (('1', '2'), {}))

@@ -7,8 +7,9 @@ import os
 import random
 
 from unittest2 import skipUnless, TestCase
+from test_data import TEST_BANK_ACCOUNT
 
-from authorize import Address, AuthorizeClient, CreditCard
+from authorize import Address, AuthorizeClient, CreditCard, BankAccount
 from authorize.exceptions import AuthorizeResponseError
 
 
@@ -30,10 +31,12 @@ class AuthorizeLiveTests(TestCase):
         # thinks the transactions are duplicates and rejects them
         self.amount1 = random.randrange(100, 100000) / 100.0
         self.amount2 = random.randrange(100, 100000) / 100.0
+        self.amount3 = random.randrange(100, 1000) / 100.0
         self.client = AuthorizeClient(TEST_LOGIN_ID, TEST_TRANSACTION_KEY)
         self.year = date.today().year + 10
         self.credit_card = CreditCard('4111111111111111', self.year, 1, '911',
             'Jeff', 'Schenck')
+        self.bank_account = BankAccount(**dict(TEST_BANK_ACCOUNT))
         self.address = Address('45 Rose Ave', 'Venice', 'CA', '90291')
 
     def test_credit_card(self):
@@ -57,3 +60,11 @@ class AuthorizeLiveTests(TestCase):
         recurring.update(amount=self.amount2, trial_amount=self.amount2 - 0.5, trial_occurrences=3)
         recurring_from_id = self.client.recurring(recurring.uid)
         recurring_from_id.delete()
+
+    def test_saved_bank_account_pass(self):
+        check = self.client.check(self.bank_account, self.address)
+        saved = check.save()
+        saved.auth(self.amount3).settle()
+        saved.capture(self.amount3)
+        saved_from_id = self.client.saved_check(saved.uid)
+        saved_from_id.delete()

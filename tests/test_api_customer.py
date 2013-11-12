@@ -3,9 +3,11 @@ from datetime import date
 import mock
 from suds import WebFault
 from unittest2 import TestCase
+from test_data import TEST_BANK_ACCOUNT
+from authorize.apis.customer import Client as RealClient
 
 from authorize.apis.customer import CustomerAPI, PROD_URL, TEST_URL
-from authorize.data import Address, CreditCard
+from authorize.data import Address, CreditCard, BankAccount
 from authorize.exceptions import AuthorizeConnectionError, \
     AuthorizeResponseError
 
@@ -53,11 +55,17 @@ class CustomerAPITests(TestCase):
             'authorize.apis.customer.Client')
         self.Client = self.patcher.start()
         self.api = CustomerAPI('123', '456')
+        self.real_client = RealClient(TEST_URL)
 
         # Make the factory creator return mocks that know what kind they are
+        # and correctly handles enumerations
         def create(kind):
             created = mock.Mock()
             created._kind = kind
+            type = self.real_client.factory.resolver.find(kind)
+            if type.enum():
+                for e, a in type.children():
+                    setattr(created, e.name, e.name)
             return created
         self.api.client.factory.create.side_effect = create
 
@@ -131,7 +139,7 @@ class CustomerAPITests(TestCase):
         self.assertEqual(profile_id, '123456')
         self.assertEqual(payment_ids, ['123457'])
 
-    def test_create_saved_payment(self):
+    def test_create_saved_credit_card_payment(self):
         service = self.api.client.service.CreateCustomerPaymentProfile
         service.return_value = SUCCESS
         year = date.today().year + 10
@@ -143,6 +151,7 @@ class CustomerAPITests(TestCase):
         payment_profile = self.api.create_saved_payment(credit_card, address)
         self.assertEqual(service.call_args, None)
         self.assertEqual(payment_profile._kind, 'CustomerPaymentProfileType')
+        self.assertEqual(payment_profile.customerType, 'individual')
         self.assertEqual(payment_profile.payment._kind, 'PaymentType')
         self.assertEqual(payment_profile.payment.creditCard._kind,
             'CreditCardType')
@@ -176,6 +185,80 @@ class CustomerAPITests(TestCase):
         self.assertEqual(payment_profile.payment.creditCard.cardCode, '911')
         self.assertEqual(payment_profile.billTo.firstName, 'Jeff')
         self.assertEqual(payment_profile.billTo.lastName, 'Schenck')
+        self.assertNotEqual(payment_profile.billTo.address, '45 Rose Ave')
+        self.assertNotEqual(payment_profile.billTo.city, 'Venice')
+        self.assertNotEqual(payment_profile.billTo.state, 'CA')
+        self.assertNotEqual(payment_profile.billTo.zip, '90291')
+        self.assertNotEqual(payment_profile.billTo.country, 'US')
+
+    def test_create_saved_bank_account_payment(self):
+        service = self.api.client.service.CreateCustomerPaymentProfile
+        service.return_value = SUCCESS
+        bank_account = BankAccount(**dict(TEST_BANK_ACCOUNT))
+        address = Address('45 Rose Ave', 'Venice', 'CA', '90291')
+
+        # Without profile id should return object
+        payment_profile = self.api.create_saved_payment(
+            bank_account=bank_account, address=address)
+        self.assertEqual(service.call_args, None)
+        self.assertEqual(payment_profile._kind, 'CustomerPaymentProfileType')
+        self.assertEqual(payment_profile.customerType,
+            TEST_BANK_ACCOUNT['customer_type'])
+        self.assertEqual(payment_profile.payment._kind, 'PaymentType')
+        self.assertEqual(payment_profile.payment.bankAccount._kind,
+            'BankAccountType')
+        self.assertEqual(payment_profile.payment.bankAccount.nameOnAccount,
+             '{0} {1}'.format(TEST_BANK_ACCOUNT['first_name'],
+                              TEST_BANK_ACCOUNT['last_name']))
+        self.assertEqual(payment_profile.payment.bankAccount.accountType,
+            TEST_BANK_ACCOUNT['account_type'])
+        self.assertEqual(payment_profile.payment.bankAccount.echeckType,
+            TEST_BANK_ACCOUNT['echeck_type'])
+        self.assertEqual(payment_profile.payment.bankAccount.bankName,
+            TEST_BANK_ACCOUNT['bank_name'])
+        self.assertEqual(payment_profile.payment.bankAccount.routingNumber,
+            str(TEST_BANK_ACCOUNT['routing_number']))
+        self.assertEqual(payment_profile.payment.bankAccount.accountNumber,
+            str(TEST_BANK_ACCOUNT['account_number']))
+        self.assertEqual(payment_profile.billTo.firstName,
+            TEST_BANK_ACCOUNT['first_name'])
+        self.assertEqual(payment_profile.billTo.lastName,
+            TEST_BANK_ACCOUNT['last_name'])
+        self.assertEqual(payment_profile.billTo.address, '45 Rose Ave')
+        self.assertEqual(payment_profile.billTo.city, 'Venice')
+        self.assertEqual(payment_profile.billTo.state, 'CA')
+        self.assertEqual(payment_profile.billTo.zip, '90291')
+        self.assertEqual(payment_profile.billTo.country, 'US')
+
+        # With profile id should make call to API
+        payment_profile_id = self.api.create_saved_payment(
+            bank_account=bank_account, profile_id='1')
+        self.assertEqual(payment_profile_id, '123458')
+        self.assertEqual(service.call_args[0][1], '1')
+        payment_profile = service.call_args[0][2]
+        self.assertEqual(payment_profile._kind, 'CustomerPaymentProfileType')
+        self.assertEqual(payment_profile.customerType,
+            TEST_BANK_ACCOUNT['customer_type'])
+        self.assertEqual(payment_profile.payment._kind, 'PaymentType')
+        self.assertEqual(payment_profile.payment.bankAccount._kind,
+            'BankAccountType')
+        self.assertEqual(payment_profile.payment.bankAccount.nameOnAccount,
+            '{0} {1}'.format(TEST_BANK_ACCOUNT['first_name'],
+                             TEST_BANK_ACCOUNT['last_name']))
+        self.assertEqual(payment_profile.payment.bankAccount.accountType,
+            TEST_BANK_ACCOUNT['account_type'])
+        self.assertEqual(payment_profile.payment.bankAccount.echeckType,
+            TEST_BANK_ACCOUNT['echeck_type'])
+        self.assertEqual(payment_profile.payment.bankAccount.bankName,
+            TEST_BANK_ACCOUNT['bank_name'])
+        self.assertEqual(payment_profile.payment.bankAccount.routingNumber,
+            str(TEST_BANK_ACCOUNT['routing_number']))
+        self.assertEqual(payment_profile.payment.bankAccount.accountNumber,
+            str(TEST_BANK_ACCOUNT['account_number']))
+        self.assertEqual(payment_profile.billTo.firstName,
+            TEST_BANK_ACCOUNT['first_name'])
+        self.assertEqual(payment_profile.billTo.lastName,
+            TEST_BANK_ACCOUNT['last_name'])
         self.assertNotEqual(payment_profile.billTo.address, '45 Rose Ave')
         self.assertNotEqual(payment_profile.billTo.city, 'Venice')
         self.assertNotEqual(payment_profile.billTo.state, 'CA')
