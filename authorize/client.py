@@ -60,7 +60,7 @@ class AuthorizeClient(object):
 
     def check(self, bank_account, address=None):
         """
-        To work with a bank_account, pass in a
+        To work with a bank account, pass in a
         :class:`BankAccount <authorize.data.BankAccount>` instance, and
         optionally an :class:`Address <authorize.data.Address>` instance. This
         will return an
@@ -225,7 +225,8 @@ class AuthorizeBankAccount(object):
         self.address = address
 
     def __repr__(self):
-        return '<AuthorizeBankAccount {0.bank_account.card_type} ' \
+        return '<AuthorizeBankAccount {0.bank_account.account_type} ' \
+               '{0.bank_account.routing_number} ' \
                '{0.bank_account.safe_number}>'.format(self)
 
     def auth(self, amount):
@@ -236,7 +237,7 @@ class AuthorizeBankAccount(object):
         :class:`AuthorizeTransaction <authorize.client.AuthorizeTransaction>`
         instance representing the transaction.
         """
-        response = self._client._transaction.auth(
+        response = self._client._customer.auth(
             amount, self.bank_account, self.address)
         transaction = self._client.transaction(response['transaction_id'])
         transaction.full_response = response
@@ -249,7 +250,7 @@ class AuthorizeBankAccount(object):
         :class:`AuthorizeTransaction <authorize.client.AuthorizeTransaction>`
         instance representing the transaction.
         """
-        response = self._client._transaction.capture(
+        response = self._client._customer.capture(
             amount, self.bank_account, self.address)
         transaction = self._client.transaction(response['transaction_id'])
         transaction.full_response = response
@@ -268,7 +269,7 @@ class AuthorizeBankAccount(object):
         profile_id, payment_ids = self._client._customer \
             .create_saved_profile(unique_id, [payment])
         uid = '{0}|{1}'.format(profile_id, payment_ids[0])
-        return self._client.saved_card(uid)
+        return self._client.saved_check(uid)
 
     def recurring(self, amount, start, days=None, months=None,
                   occurrences=None, trial_amount=None, trial_occurrences=None):

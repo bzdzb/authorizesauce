@@ -79,8 +79,8 @@ class CustomerAPI(object):
             payment_ids = response.customerPaymentProfileIdList[0]
         return profile_id, payment_ids
 
-    def create_saved_payment(self, credit_card=None, bank_account=None,
-                             address=None, profile_id=None):
+    def create_saved_payment(self, credit_card=None, address=None,
+                             bank_account=None, profile_id=None):
         """
         Creates a payment profile. If profile_id is provided, this payment
         profile will be created in Authorize.net attached to that profile.
@@ -108,7 +108,8 @@ class CustomerAPI(object):
                 'BankAccountTypeEnum')
             bank_account_type.accountType = getattr(
                 bank_account_type_enum, str(bank_account.account_type))
-            bank_account_type.nameOnAccount = bank_account.name
+            bank_account_type.nameOnAccount = '{0} {1}'.format(
+                bank_account.first_name, bank_account.last_name)
             echeck_type_enum = self.client.factory.create('EcheckTypeEnum')
             bank_account_type.echeckType = getattr(
                 echeck_type_enum, str(bank_account.echeck_type))
@@ -129,6 +130,8 @@ class CustomerAPI(object):
                 payment_profile.billTo.firstName = bank_account.first_name
             if bank_account.last_name:
                 payment_profile.billTo.lastName = bank_account.last_name
+            if bank_account.company_name:
+                payment_profile.billTo.company = bank_account.company_name
         if address and address.street:
             payment_profile.billTo.address = address.street
         if address and address.city:

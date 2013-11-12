@@ -16,7 +16,11 @@ CARD_TYPES = {
     'discover': r'6011\d{12}',
     'diners': r'(30[0-5]\d{11}|(36|38)\d{12})$'
 }
-ACCOUNT_TYPES = ('checking', 'savings')
+
+CUSTOMER_TYPES = ('individual', 'business')
+ACCOUNT_TYPES = ('checking', 'savings', 'businessChecking')
+ROUTING_NUMBER_TYPES = ('ABA', 'IBAN', 'SWIFT')
+ECHECK_TYPES = ('ARC', 'BOC', 'CCD', 'PPD', 'TEL', 'WEB')
 
 
 class CreditCard(object):
@@ -103,21 +107,25 @@ class BankAccount(object):
     :class:`AuthorizeInvalidError <authorize.exceptions.AuthorizeInvalidError>`
     for invalid bank account numbers, past expiration dates, etc.
     """
-    def __init__(self, bank_name=None, account_type=None,
-                 routing_number=None, account_number=None, name=None,
-                 echeck_type='WEB', customer_type='individual'):
-        self.account_type = account_type
+    def __init__(self, first_name=None, last_name=None, company_name=None,
+                 bank_name=None, routing_number=None, account_number=None,
+                 customer_type='individual', account_type='checking',
+                 routing_number_type='ABA', echeck_type='WEB'):
+        self.first_name = first_name
+        self.last_name = last_name
+        self.company_name = company_name
+        self.bank_name = bank_name
         self.routing_number = re.sub(r'\D', '', str(routing_number))
         self.account_number = re.sub(r'\D', '', str(account_number))
-        self.name = name
-        self.first_name = name.split(' ')[0]
-        self.last_name = name.split(' ')[-1]
-        self.echeck_type = echeck_type
         self.customer_type = customer_type
+        self.account_type = account_type
+        self.routing_number_type = routing_number_type
+        self.echeck_type = echeck_type
         self.validate()
 
     def __repr__(self):
-        return '<BankAccount {0.account_type} {0.safe_number}>'.format(self)
+        return '<BankAccount {0.account_type} ' \
+               '{0.routing_number} {0.safe_number}>'.format(self)
 
     def validate(self):
         """
@@ -126,20 +134,46 @@ class BankAccount(object):
         if anything doesn't check out. You shouldn't have to call this
         yourself.
         """
-        self._validate_aba_micr(self.routing_number)
-        if not self.bank_name:
-            raise AuthorizeInvalidError('Bank name is not valid.')
-        if not self.account_type:
+        if self.first_name is None or not self.first_name.strip():
+            raise AuthorizeInvalidError('First name on account is required.')
+        if self.last_name is None or not self.last_name.strip():
+            raise AuthorizeInvalidError('Last name on account is required.')
+        if self.customer_type == 'business':
+            if self.company_name is None or not self.company_name.strip():
+                raise AuthorizeInvalidError('Company name is required.')
+        if self.bank_name is None or not self.bank_name.strip():
+            raise AuthorizeInvalidError('Bank name is required.')
+        if self.routing_number is None or not self.routing_number.strip():
+            raise AuthorizeInvalidError('Routing number is required.')
+        if self.account_number is None or not self.account_number.strip():
+            raise AuthorizeInvalidError('Account number is required.')
+        if self.customer_type is None or not self.customer_type.strip():
+            raise AuthorizeInvalidError('Customer type is required.')
+        if self.customer_type not in CUSTOMER_TYPES:
+            raise AuthorizeInvalidError('Customer type is not valid.')
+        if self.account_type is None or not self.account_type.strip():
+            raise AuthorizeInvalidError('Bank account type is required.')
+        if self.account_type not in ACCOUNT_TYPES:
             raise AuthorizeInvalidError('Bank account type is not valid.')
+        if self.routing_number_type is None \
+                or not self.routing_number_type.strip():
+            raise AuthorizeInvalidError('Routing number type is required.')
+        if self.routing_number_type not in ROUTING_NUMBER_TYPES:
+            raise AuthorizeInvalidError('Routing number is not valid.')
+        if self.echeck_type is None or not self.echeck_type.strip():
+            raise AuthorizeInvalidError('eCheck type is required.')
+        if self.echeck_type not in ECHECK_TYPES:
+            raise AuthorizeInvalidError('eCheck type is not valid.')
         try:
             num = map(int, self.account_number)
         except ValueError:
             raise AuthorizeInvalidError('Bank account number is not valid.')
         if not (len(num) >=4 and len(num) <= 17):
             raise AuthorizeInvalidError('Bank account number is not valid.')
+        self._validate_aba(self.routing_number)
 
     @staticmethod
-    def _validate_aba_micr(routing_number):
+    def _validate_aba(routing_number):
         """
         Validates a US ABA standard MICR routing number and raises an
         :class:`AuthorizeInvalidError <authorize.exceptions.AuthorizeInvalidError>`
