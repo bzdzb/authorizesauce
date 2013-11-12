@@ -130,8 +130,8 @@ class CustomerAPI(object):
                 payment_profile.billTo.firstName = bank_account.first_name
             if bank_account.last_name:
                 payment_profile.billTo.lastName = bank_account.last_name
-            if bank_account.company_name:
-                payment_profile.billTo.company = bank_account.company_name
+            if bank_account.company:
+                payment_profile.billTo.company = bank_account.company
         if address and address.street:
             payment_profile.billTo.address = address.street
         if address and address.city:

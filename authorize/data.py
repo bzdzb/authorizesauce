@@ -34,7 +34,7 @@ class CreditCard(object):
     for invalid credit card numbers, past expiration dates, etc.
     """
     def __init__(self, card_number=None, exp_year=None, exp_month=None,
-            cvv=None, first_name=None, last_name=None):
+            cvv=None, first_name=None, last_name=None, company=None):
         self.card_number = re.sub(r'\D', '', str(card_number))
         self.exp_year = str(exp_year)
         self.exp_month = str(exp_month)
@@ -107,13 +107,13 @@ class BankAccount(object):
     :class:`AuthorizeInvalidError <authorize.exceptions.AuthorizeInvalidError>`
     for invalid bank account numbers, past expiration dates, etc.
     """
-    def __init__(self, first_name=None, last_name=None, company_name=None,
+    def __init__(self, first_name=None, last_name=None, company=None,
                  bank_name=None, routing_number=None, account_number=None,
                  customer_type='individual', account_type='checking',
                  routing_number_type='ABA', echeck_type='WEB'):
         self.first_name = first_name
         self.last_name = last_name
-        self.company_name = company_name
+        self.company = company
         self.bank_name = bank_name
         self.routing_number = re.sub(r'\D', '', str(routing_number))
         self.account_number = re.sub(r'\D', '', str(account_number))
@@ -139,7 +139,7 @@ class BankAccount(object):
         if self.last_name is None or not self.last_name.strip():
             raise AuthorizeInvalidError('Last name on account is required.')
         if self.customer_type == 'business':
-            if self.company_name is None or not self.company_name.strip():
+            if self.company is None or not self.company.strip():
                 raise AuthorizeInvalidError('Company name is required.')
         if self.bank_name is None or not self.bank_name.strip():
             raise AuthorizeInvalidError('Bank name is required.')
