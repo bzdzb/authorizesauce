@@ -2,7 +2,9 @@ from cStringIO import StringIO
 from datetime import date
 
 import mock
-from unittest2 import TestCase
+from unittest import TestCase
+if not hasattr(TestCase, 'assertIsNotNone'):
+    from unittest2 import TestCase
 
 from authorize.apis.transaction import PROD_URL, TEST_URL, TransactionAPI
 from authorize.data import Address, CreditCard

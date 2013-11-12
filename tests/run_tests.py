@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 import os
 import sys
-from unittest2 import TestLoader, TextTestRunner
+from unittest import TestCase
+if not hasattr(TestCase, 'assertIsNotNone'):
+    from unittest2 import TestLoader, TextTestRunner
+else:
+    from unittest import TestLoader, TextTestRunner
 
 
 if __name__ == '__main__':

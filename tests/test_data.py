@@ -1,6 +1,8 @@
 from datetime import date, datetime, timedelta
 
-from unittest2 import TestCase
+from unittest import TestCase
+if not hasattr(TestCase, 'assertIsNotNone'):
+    from unittest2 import TestCase
 
 from authorize.data import Address, CreditCard, BankAccount
 from authorize.exceptions import AuthorizeInvalidError

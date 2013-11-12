@@ -6,7 +6,11 @@ from datetime import date, timedelta
 import os
 import random
 
-from unittest2 import skipUnless, TestCase
+from unittest import TestCase
+if not hasattr(TestCase, 'assertIsNotNone'):
+    from unittest2 import skipUnless
+else:
+    from unittest import skipUnless
 from test_data import TEST_BANK_ACCOUNT
 
 from authorize import Address, AuthorizeClient, CreditCard, BankAccount

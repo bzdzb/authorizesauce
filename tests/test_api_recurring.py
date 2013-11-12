@@ -2,7 +2,9 @@ from datetime import date, timedelta
 
 import mock
 from suds import WebFault
-from unittest2 import TestCase
+from unittest import TestCase
+if not hasattr(TestCase, 'assertIsNotNone'):
+    from unittest2 import TestCase
 
 from authorize.apis.recurring import PROD_URL, RecurringAPI, TEST_URL
 from authorize.data import CreditCard
