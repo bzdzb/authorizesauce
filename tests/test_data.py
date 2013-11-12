@@ -19,7 +19,7 @@ TEST_CARD_NUMBERS = [
 ]
 
 TEST_BANK_ACCOUNT = {'first_name': "Enoon", 'last_name': 'Erehwon',
-                     'bank_name': "Knab Bank, NLC",
+                     'company': '', 'bank_name': "Knab Bank, NLC",
                      'routing_number': 211073473, 'account_number': 12341234123,
                      'customer_type': 'individual', 'account_type': 'checking',
                      'routing_number_type': 'ABA', 'echeck_type': 'WEB'}
@@ -92,70 +92,91 @@ class BankAccountTests(TestCase):
     def test_business_checking_account(self):
         bank_account = self._bank_account(customer_type='business',
                                           account_type='businessChecking',
-                                          company_name='Seatec Astronomy')
+                                          company='Seatec Astronomy')
+        self.assertEqual(bank_account.customer_type, 'business')
+        self.assertEqual(bank_account.account_type, 'businessChecking')
+        self.assertEqual(bank_account.company, 'Seatec Astronomy')
         repr(bank_account)
+
+    def test_missing_company_for_business_checking_fails(self):
+        self.assertRaises(AuthorizeInvalidError, self._bank_account,
+            customer_type='business', account_type='businessChecking')
 
     def test_bank_account_first_and_last_name_validation(self):
         """Ensure missing first or last name fails"""
-        self.assertRaises(AuthorizeInvalidError, BankAccount, first_name=None)
-        self.assertRaises(AuthorizeInvalidError, BankAccount, first_name='')
-        self.assertRaises(AuthorizeInvalidError, BankAccount, last_name=None)
-        self.assertRaises(AuthorizeInvalidError, BankAccount, last_name='')
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account, first_name=None)
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account, first_name='')
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account, last_name=None)
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account, last_name='')
 
     def test_bank_account_bank_name_validation(self):
         """Ensure missing bank name fails"""
-        self.assertRaises(AuthorizeInvalidError, BankAccount, bank_name=None)
-        self.assertRaises(AuthorizeInvalidError, BankAccount, bank_name='')
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account, bank_name=None)
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account, bank_name='')
 
     def test_bank_account_customer_type_validation(self):
         """Ensure missing or invalid customer_type fails"""
         self.assertRaises(AuthorizeInvalidError,
-                          BankAccount, customer_type=None)
-        self.assertRaises(AuthorizeInvalidError, BankAccount, customer_type='')
-        self.assertRaises(AuthorizeInvalidError, BankAccount, customer_type='X')
+                          self._bank_account, customer_type=None)
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account, customer_type='')
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account, customer_type='X')
 
     def test_bank_account_account_type_validation(self):
         """Ensure missing or invalid account type fails"""
-        self.assertRaises(AuthorizeInvalidError, BankAccount, account_type=None)
-        self.assertRaises(AuthorizeInvalidError, BankAccount, account_type='')
-        self.assertRaises(AuthorizeInvalidError, BankAccount, account_type='X')
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account, account_type=None)
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account, account_type='')
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account, account_type='X')
 
     def test_bank_account_routing_number_type_validation(self):
         """Ensure missing or invalid routing number type fails"""
         self.assertRaises(AuthorizeInvalidError,
-                          BankAccount, routing_number_type=None)
+                          self._bank_account, routing_number_type=None)
         self.assertRaises(AuthorizeInvalidError,
-                          BankAccount, routing_number_type='')
+                          self._bank_account, routing_number_type='')
         self.assertRaises(AuthorizeInvalidError,
-                          BankAccount, routing_number_type='X')
+                          self._bank_account, routing_number_type='X')
 
     def test_bank_account_echeck_type_validation(self):
         """Ensure missing or invalid eCheck type fails"""
-        self.assertRaises(AuthorizeInvalidError, BankAccount, echeck_type=None)
-        self.assertRaises(AuthorizeInvalidError, BankAccount, echeck_type='')
-        self.assertRaises(AuthorizeInvalidError, BankAccount, echeck_type='X')
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account, echeck_type=None)
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account, echeck_type='')
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account, echeck_type='X')
 
     def test_bank_account_routing_number_validation(self):
         """Ensure missing or invalid routing number fails"""
 
         # Missing routing number fails
         self.assertRaises(AuthorizeInvalidError,
-                          BankAccount, routing_number=None)
+                          self._bank_account, routing_number=None)
         self.assertRaises(AuthorizeInvalidError,
-                          BankAccount, routing_number='')
+                          self._bank_account, routing_number='')
         # Invalid routing number length fails
         self.assertRaises(AuthorizeInvalidError,
-                          BankAccount, routing_number=12341234)
+                          self._bank_account, routing_number=12341234)
         self.assertRaises(AuthorizeInvalidError,
-                          BankAccount, routing_number=1234567890)
+                          self._bank_account, routing_number=1234567890)
         # Invalid account number length fails
         self.assertRaises(AuthorizeInvalidError,
-                          BankAccount, routing_number=123)
+                          self._bank_account, routing_number=123)
         self.assertRaises(AuthorizeInvalidError,
-                          BankAccount, routing_number=123456789012345678)
+                          self._bank_account, routing_number=123456789012345678)
         # Alpha values in routing number fails
         self.assertRaises(AuthorizeInvalidError,
-                          BankAccount, routing_number='01100001X')
+                          self._bank_account, routing_number='01100001X')
         # Test standard test bank routing numbers that should validate
         for aba_number, acct_number in TEST_BANK_ACCOUNT_NUMBERS:
             bank_account = self._bank_account(routing_number=aba_number,

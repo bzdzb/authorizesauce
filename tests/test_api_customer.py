@@ -20,6 +20,7 @@ class AttrDict(dict):
         self.__dict__ = self
 
 OPTIONS = 'x_delim_data=TRUE&x_version=3.1&x_delim_char=%3B&x_test_request=F'
+OPTIONS_TEST = 'x_delim_data=TRUE&x_version=3.1&x_delim_char=%3B&x_test_request=Y'
 RESPONSE = (
     '1;1;1;This transaction has been approved.;IKRAGJ;Y;2171062816;;;20.00;CC'
     ';auth_only;;Jeffrey;Schenck;;45 Rose Ave;Venice;CA;90291;USA;;;;;;;;;;;;'
@@ -79,6 +80,17 @@ class CustomerAPITests(TestCase):
         self.assertEqual(api.url, TEST_URL)
         api = CustomerAPI('123', '456', debug=False)
         self.assertEqual(api.url, PROD_URL)
+
+    def test_api_credentials(self):
+        api = CustomerAPI('123', '456')
+        self.assertEqual(api.login_id, '123')
+        self.assertEqual(api.transaction_key, '456')
+
+    def test_api_test_flag(self):
+        api = CustomerAPI('123', '456', test=False)
+        self.assertEqual(api.transaction_options, OPTIONS)
+        api = CustomerAPI('123', '456', test=True)
+        self.assertEqual(api.transaction_options, OPTIONS_TEST)
 
     def test_client_and_auth(self):
         self.Client.reset_mock()
