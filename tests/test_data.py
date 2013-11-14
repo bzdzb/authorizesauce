@@ -24,9 +24,9 @@ TEST_BANK_ACCOUNT = {'first_name': "Enoon", 'last_name': 'Erehwon',
                      'customer_type': 'individual', 'account_type': 'checking',
                      'routing_number_type': 'ABA', 'echeck_type': 'WEB'}
 TEST_BANK_ACCOUNT_NUMBERS = [
-    ('0110-9966-0', '1234'),
+    ('0110-9966-0', '12345'),
     ('0110-9966-0', '12345678901234567'),
-    (111050295, 1234),
+    (111050295, 12345),
     (111050295, 12345678901234567),
 ]
 
@@ -156,7 +156,7 @@ class BankAccountTests(TestCase):
         self.assertRaises(AuthorizeInvalidError,
                           self._bank_account, echeck_type='X')
 
-    def test_bank_account_routing_number_validation(self):
+    def test_bank_account_aba_routing_number_validation(self):
         """Ensure missing or invalid routing number fails"""
 
         # Missing routing number fails
@@ -166,23 +166,52 @@ class BankAccountTests(TestCase):
                           self._bank_account, routing_number='')
         # Invalid routing number length fails
         self.assertRaises(AuthorizeInvalidError,
-                          self._bank_account, routing_number=12341234)
+                          self._bank_account, routing_number=12345678)
         self.assertRaises(AuthorizeInvalidError,
                           self._bank_account, routing_number=1234567890)
+        # Invalid checksum fails
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account, routing_number=123456789)
+
+    def test_bank_account_number_validation(self):
+        """Ensure missing or invalid account number fails
+
+        The eCheck.net developer guide (July 2013) defines the account number
+        format as "up to 20 digits." In practice anything less than 5 digits
+        returns: "E00015: The field length is invalid for Bank Account Number."
+
+        The CIM SOAP Developer Guide (Oct 2013) defines the account number
+        format as "5 to 17 digits."
+        """
+
+        # Missing account number fails
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account, account_number=None)
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account, account_number='')
         # Invalid account number length fails
         self.assertRaises(AuthorizeInvalidError,
-                          self._bank_account, routing_number=123)
+                          self._bank_account, account_number=1234)
         self.assertRaises(AuthorizeInvalidError,
-                          self._bank_account, routing_number=123456789012345678)
-        # Alpha values in routing number fails
+                          self._bank_account, account_number='1234')
         self.assertRaises(AuthorizeInvalidError,
-                          self._bank_account, routing_number='01100001X')
+                          self._bank_account,
+                          account_number=123456789012345678)  # 18-digit num
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account,
+                          account_number='123456789012345678')  # 18-digit str
+        # Alpha values in account number fails
+        self.assertRaises(AuthorizeInvalidError,
+                          self._bank_account, routing_number='1234567890X')
+
+    def test_bank_account_test_accounts(self):
         # Test standard test bank routing numbers that should validate
         for aba_number, acct_number in TEST_BANK_ACCOUNT_NUMBERS:
             bank_account = self._bank_account(routing_number=aba_number,
                                               account_number=acct_number)
             self.assertEquals(bank_account.routing_number,
                               str(aba_number).replace('-', ''))
+            self.assertEquals(bank_account.account_number, str(acct_number))
 
     def test_bank_account_safe_number(self):
         bank_account = self._bank_account(account_number='12345678912345678')

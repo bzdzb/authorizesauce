@@ -34,7 +34,7 @@ class CreditCard(object):
     for invalid credit card numbers, past expiration dates, etc.
     """
     def __init__(self, card_number=None, exp_year=None, exp_month=None,
-            cvv=None, first_name=None, last_name=None, company=None):
+                cvv=None, first_name=None, last_name=None):
         self.card_number = re.sub(r'\D', '', str(card_number))
         self.exp_year = str(exp_year)
         self.exp_month = str(exp_month)
@@ -115,7 +115,7 @@ class BankAccount(object):
         self.last_name = last_name
         self.company = company
         self.bank_name = bank_name
-        self.routing_number = re.sub(r'\D', '', str(routing_number))
+        self.routing_number = re.sub(r'[^0-9A-Za-z]', '', str(routing_number))
         self.account_number = re.sub(r'\D', '', str(account_number))
         self.customer_type = customer_type
         self.account_type = account_type
@@ -164,13 +164,14 @@ class BankAccount(object):
             raise AuthorizeInvalidError('eCheck type is required.')
         if self.echeck_type not in ECHECK_TYPES:
             raise AuthorizeInvalidError('eCheck type is not valid.')
-        try:
-            num = map(int, self.account_number)
-        except ValueError:
-            raise AuthorizeInvalidError('Bank account number is not valid.')
-        if not (len(num) >=4 and len(num) <= 17):
-            raise AuthorizeInvalidError('Bank account number is not valid.')
+        self._validate_account_number(self.account_number)
         self._validate_aba(self.routing_number)
+
+    @staticmethod
+    def _validate_account_number(account_number):
+        num = map(int, account_number)
+        if not (len(num) >= 5 and len(num) <= 17):
+            raise AuthorizeInvalidError('Bank account number is not valid.')
 
     @staticmethod
     def _validate_aba(routing_number):
